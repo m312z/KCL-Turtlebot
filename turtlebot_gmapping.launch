@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<!-- ROSPlan turtlebot -->
+<launch>
+
+	<!-- ********* -->
+	<!-- turtlebot -->
+	<!-- ********* -->
+
+	<!-- turtlebot -->
+	<include file="$(find turtlebot_bringup)/launch/minimal.launch" >
+	</include>
+
+	<arg name="3d_sensor" default="kinect"/>
+
+	<include file="$(find turtlebot_bringup)/launch/3dsensor.launch">
+		<arg name="rgb_processing" value="true" />
+		<arg name="depth_registration" value="false" />
+		<arg name="depth_processing" value="false" />
+		<arg name="scan_topic" value="/scan" />
+	</include>
+
+	<!-- Move base -->
+	<arg name="custom_param_file" default="$(find turtlebot_navigation)/param/$(arg 3d_sensor)_costmap_params.yaml"/>
+	<include file="$(find turtlebot_navigation)/launch/includes/move_base.launch.xml">
+		<arg name="custom_param_file" value="$(arg custom_param_file)"/>
+	</include>
+
+  <!-- Gmapping -->
+  <arg name="custom_gmapping_launch_file" default="$(find turtlebot_navigation)/launch/includes/gmapping/$(arg 3d_sensor)_gmapping.launch.xml"/>
+  <include file="$(arg custom_gmapping_launch_file)"/>
+
+
+</launch>
