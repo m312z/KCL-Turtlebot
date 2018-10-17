@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<!-- ROSPlan turtlebot BHN7 -->
+<launch>
+	<arg name="waypoint_file" 		  default="/home/gerard/code/ROSPlan_ws/src/KCL-Turtlebot/maps/waypoints_floor_bhn7.txt" />
+	<arg name="action_feedback_topic" default="/rosplan_plan_dispatcher/action_feedback" />
+	<arg name="action_dispatch_topic" default="/rosplan_plan_dispatcher/action_dispatch" />
+	<arg name="knowledge_base" 		  default="rosplan_knowledge_base" />
+
+
+	<arg name="data_path"             default="$(find rosplan_demos)/common/" />
+
+
+
+
+
+    <node name="rosplan_roadmap_server" pkg="rosplan_interface_mapping" type="rpsimplemapServer" respawn="false" output="screen">
+    	<param name="waypoint_file"   value="$(arg waypoint_file)" />
+    	<param name="data_path" 	  value="$(arg data_path)" />
+    	<param name="knowledge_base"  value="$(arg knowledge_base)" />
+    </node>
+
+    <node name="rosplan_localiser_interface" pkg="rosplan_interface_turtlebot2" type="rplocaliser" respawn="false" output="screen">
+    	<param name="action_feedback_topic" value="$(arg action_feedback_topic)" />
+    	<param name="action_dispatch_topic" value="$(arg action_dispatch_topic)" />
+    	<param name="waypoint_file" value="$(arg waypoint_file)" />
+    	<remap from="/kcl_rosplan/update_knowledge_base" to="/rosplan_knowledge_base/update"/>
+    </node>
+    
+    <node name="rosplan_docker_interface" pkg="rosplan_interface_turtlebot2" type="rpdocker" respawn="false" output="screen">
+    	<param name="action_feedback_topic" value="$(arg action_feedback_topic)" />
+    	<param name="action_dispatch_topic" value="$(arg action_dispatch_topic)" />
+    </node>
+
+    <!--<node name="rosplan_talker_interface" pkg="rosplan_interface_turtlebot2" type="rptalker" respawn="false" output="screen"> 
+    	<param name="action_feedback_topic" value="$(arg action_feedback_topic)" />
+    </node>-->
+    
+    <node name="rosplan_movebase_interface" pkg="rosplan_interface_movebase" type="rpmovebase" respawn="false" output="screen">
+    	<param name="action_feedback_topic" value="$(arg action_feedback_topic)" />
+    	<param name="action_dispatch_topic" value="$(arg action_dispatch_topic)" />
+    	<param name="knowledge_base" 		value="$(arg knowledge_base)" />
+    	<param name="pddl_action_name"		value="goto_waypoint" />
+	</node>
+</launch>

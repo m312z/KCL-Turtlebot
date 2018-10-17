@@ -17,6 +17,7 @@
 		<arg name="depth_registration" value="true" />
 		<arg name="depth_processing" value="true" />
 		<arg name="scan_topic" value="/scan" />
+		<arg name="3d_sensor" value="$(arg 3d_sensor)" />
 	</include>
 
 	<!-- Map server -->
@@ -32,6 +33,7 @@
 		<arg name="initial_pose_x" value="$(arg initial_pose_x)"/>
 		<arg name="initial_pose_y" value="$(arg initial_pose_y)"/>
 		<arg name="initial_pose_a" value="$(arg initial_pose_a)"/>
+		<arg name="use_map_topic" value="true" />
 	</include>
 
 	<!-- Move base -->
