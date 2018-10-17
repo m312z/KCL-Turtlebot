@@ -29,6 +29,7 @@
     <node name="rosplan_docker_interface" pkg="rosplan_interface_turtlebot2" type="rpdocker" respawn="false" output="screen">
     	<param name="action_feedback_topic" value="$(arg action_feedback_topic)" />
     	<param name="action_dispatch_topic" value="$(arg action_dispatch_topic)" />
+    	<remap from="/kcl_rosplan/update_knowledge_base" to="/rosplan_knowledge_base/update"/>
     </node>
 
     <!--<node name="rosplan_talker_interface" pkg="rosplan_interface_turtlebot2" type="rptalker" respawn="false" output="screen"> 
