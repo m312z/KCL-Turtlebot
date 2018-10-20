@@ -34,6 +34,7 @@
 		<arg name="initial_pose_y" value="$(arg initial_pose_y)"/>
 		<arg name="initial_pose_a" value="$(arg initial_pose_a)"/>
 		<arg name="use_map_topic" value="true" />
+
 	</include>
 
 	<!-- Move base -->
