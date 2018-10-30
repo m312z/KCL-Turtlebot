@@ -1,0 +1,68 @@
+///////////////////////////////////////////////////////////////////////////////
+//
+// A domain for turtlebot exploration, demo for ROSPlan.
+//
+// Author: Gerard Canal (gcanal@iri.upc.edu)
+// 
+// Based on the demo domain for the turtlebot.
+// Thanks to Florian Geißer, Thomas Keller and Scott Sanner for the help.
+//
+///////////////////////////////////////////////////////////////////////////////
+
+
+domain turtlebot_domain_simple_printing {
+    
+    types {
+        waypoint: object;
+        printer: waypoint;
+        robot: object;
+    };
+
+    pvariables {
+        DELIVERY_DESTINATION(waypoint): { non-fluent, bool, default = false };
+
+        robot_at(robot, waypoint): { state-fluent, bool, default = false };
+        carrying_papers(robot): { state-fluent, bool, default = false };
+        papers_delivered(robot): { state-fluent, bool, default = false };
+
+        goal: { state-fluent, bool, default = false };
+        goal-reached: { state-fluent, bool, default = false };
+
+        goto_waypoint(robot, waypoint, waypoint): { action-fluent, bool, default = false }; // robot from to
+
+        wait_load(robot): { action-fluent, bool, default = false };
+        wait_unload(robot): { action-fluent, bool, default = false };
+
+    };
+
+    cpfs {
+	    goal' = exists_{?r: robot, ?w: waypoint} [DELIVERY_DESTINATION(?w) ^ robot_at(?r, ?w) ^ papers_delivered(?r)];
+        goal-reached' = goal-reached | exists_{?r: robot, ?w: waypoint} [DELIVERY_DESTINATION(?w) ^ robot_at(?r, ?w) ^ papers_delivered(?r)];
+
+
+    	robot_at'(?r, ?w) = if (exists_{?w1: waypoint} (goto_waypoint(?r, ?w1, ?w))) then true 
+                            else if (exists_{?w1: waypoint} (goto_waypoint(?r, ?w, ?w1))) then false
+                            else robot_at(?r, ?w);
+
+        carrying_papers'(?r) = if (wait_load(?r)) then true
+        					   else if (papers_delivered(?r)) then false
+        					   else carrying_papers(?r);
+
+	   	papers_delivered'(?r) = exists_{?w: waypoint} [robot_at(?r, ?w) ^ DELIVERY_DESTINATION(?w)] ^ wait_unload(?r);
+    };
+
+	reward = if (goal-reached) then (10 * -exists_{?r: robot, ?w1: waypoint, ?w2: waypoint} [goto_waypoint(?r, ?w1, ?w2)])
+			 else if (goal) then 5000
+             else -1;
+
+    action-preconditions {
+        forall_{?r: robot, ?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt) => (robot_at(?r, ?wf))];
+
+        forall_{?r: robot} [wait_load(?r) => (~carrying_papers(?r) ^ (exists_{?p: printer} [robot_at(?r, ?p)]))];
+        forall_{?r: robot} [wait_unload(?r) => (exists_{?w: waypoint} [carrying_papers(?r) ^ DELIVERY_DESTINATION(?w) ^ robot_at(?r, ?w)])];
+
+    	// Max 1 action at a time
+        forall_{?r: robot} [
+            (sum_{?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt)]) <= 1];
+    };
+}

@@ -1,0 +1,166 @@
+///////////////////////////////////////////////////////////////////////////////
+//
+// A domain for turtlebot exploration, demo for ROSPlan.
+//
+// Author: Gerard Canal (gcanal@iri.upc.edu)
+// 
+// Based on the demo domain for the turtlebot.
+// Thanks to Florian Geißer, Thomas Keller and Scott Sanner for the help.
+//
+///////////////////////////////////////////////////////////////////////////////
+
+
+domain turtlebot_domain_printing {
+    
+    types {
+        waypoint: object;
+        robot: object;
+    };
+
+    pvariables {
+        //////////////////////////////////////////////////////////////////////////////////////////
+        // Action costs and penalties
+        COST_MOVE(robot):  {non-fluent, real, default = -5};
+        VISIT_WP_REWARD:   {non-fluent, real, default = 7};
+        GOAL_REWARD:   {non-fluent, real, default = 50};
+
+        //////////////////////////////////////////////////////////////////////////////////////////
+        // Non-fluents
+        DOCK_AT(waypoint): { non-fluent, bool, default = false };
+        PRINTER_AT(waypoint): { non-fluent, bool, default=false };
+        distance(waypoint, waypoint): { non-fluent, int, default=10 }; // Filled externally
+        BUSY_RATE(waypoint): { non-fluent, real, default = 0.5 }; // % of chance for the printer being busy (0-1)
+        OCCUPATION_RATE(waypoint): { non-fluent, real, default = 1 }; // % of chance for the waypoint having people busy (0-1)
+        DELIVERY_DESTINATION(waypoint): { non-fluent, bool, default = false };
+
+
+        //////////////////////////////////////////////////////////////////////////////////////////
+        // State fluents
+        robot_at(robot, waypoint): { state-fluent, bool, default = false };
+        undocked(robot): { state-fluent, bool, default = false };
+        docked(robot): { state-fluent, bool, default = false };
+        localised(robot): { state-fluent, bool, default = false };
+
+        // Printing
+        carrying_papers(robot): { state-fluent, bool, default = false };
+        somebody_at(waypoint): { state-fluent, bool, default = true };
+        is_busy(waypoint): { state-fluent, bool, default = false };
+        asked_load(robot): { state-fluent, bool, default = false };
+        asked_unload(robot): { state-fluent, bool, default = false };
+        papers_delivered(robot, waypoint): { state-fluent, bool, default = false };
+        //in_process(robot, waypoint):  { state-fluent, bool, default = false };
+
+
+        // Goal?
+        goal: { state-fluent, bool, default = false };
+        
+        //////////////////////////////////////////////////////////////////////////////////////////
+        // Action fluents
+        goto_waypoint(robot, waypoint, waypoint): { action-fluent, bool, default = false }; // robot from to
+        localise(robot): { action-fluent, bool, default = false };
+        dock(robot, waypoint): { action-fluent, bool, default = false };
+        undock(robot, waypoint): { action-fluent, bool, default = false };
+
+        // Printing
+        ask_load(robot): { action-fluent, bool, default = false };
+        ask_unload(robot): { action-fluent, bool, default = false };
+        wait_load(robot): { action-fluent, bool, default = false };
+        wait_unload(robot): { action-fluent, bool, default = false };
+    };
+
+    cpfs {
+
+        robot_at'(?r, ?w) = if (exists_{?w1: waypoint} (goto_waypoint(?r, ?w1, ?w))) then true 
+                            else if (exists_{?w1: waypoint} (goto_waypoint(?r, ?w, ?w1))) then false
+                            else robot_at(?r, ?w);
+
+        undocked'(?r) = undocked(?r) ^ ~(exists_{?w: waypoint} (dock(?r, ?w))) | docked(?r) ^ (exists_{?w: waypoint} (undock(?r, ?w)));
+
+        docked'(?r) = docked(?r) ^ ~(exists_{?w: waypoint} (undock(?r, ?w))) | undocked(?r) ^ (exists_{?w: waypoint} (dock(?r, ?w)));
+
+        localised'(?r) = localised(?r) | localise(?r);
+
+        // Printing
+        carrying_papers'(?r) = if (wait_load(?r)) then true
+                               else if (wait_unload(?r)) then false
+                               else carrying_papers(?r);
+
+        is_busy'(?p) = PRINTER_AT(?p) ^ Bernoulli(BUSY_RATE(?p));
+        somebody_at'(?w) = true;//Bernoulli(OCCUPATION_RATE(?w));
+        asked_load'(?r) = ask_load(?r) | asked_load(?r) ^ ~(exists_{?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt)]);
+        asked_unload'(?r) = ask_unload(?r) | asked_unload(?r) ^ ~(exists_{?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt)]);
+        papers_delivered'(?r, ?w) = (robot_at(?r, ?w) ^ wait_unload(?r) ^ DELIVERY_DESTINATION(?w)) | papers_delivered(?r, ?w);
+        //in_process'(?r, ?w) = if (wait_load(?r)) then (DELIVERY_DESTINATION(?w) ^ ~exists_{?r1: robot} [?r ~= ?r1 ^ in_process(?r1, ?w)])
+        //                         else if (wait_unload(?r)) then false
+        //                         else in_process(?r, ?w);
+
+        // Goal
+        goal' = (forall_{?w: waypoint} [~DELIVERY_DESTINATION(?w) | (DELIVERY_DESTINATION(?w) ^ exists_{?r: robot} [papers_delivered(?r, ?w)])])  | goal;
+    };
+
+    reward = if (~goal ^ forall_{?w: waypoint} [~DELIVERY_DESTINATION(?w) | (DELIVERY_DESTINATION(?w) ^ exists_{?r: robot} [papers_delivered(?r, ?w)])]) then 100
+             else if (goal ^ forall_{?r: robot} [docked(?r)]) then 1000
+             //else if (goal) then -55*(sum_{?r: robot} [(localise(?r) + (sum_{?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt)]) + (sum_{?wa: waypoint} [dock(?r, ?wa)]) + (sum_{?wb: waypoint} [undock(?r, ?wb)]) + ask_load(?r) + ask_unload(?r) + wait_load(?r) + wait_unload(?r))])
+             else (-100 + sum_{?r: robot, ?wf: waypoint, ?wt: waypoint} [COST_MOVE(?r)*goto_waypoint(?r, ?wf, ?wt) * distance(?wf, ?wt)]);
+
+    // Function like: reward new deliveries, penalize movements based on distance, reward docked when everything is delivered
+    //reward = (100 * exists_{?w: waypoint} [DELIVERY_DESTINATION(?w) ^ exists_{?r: robot} [robot_at(?r, ?w) ^ wait_unload(?r) ^ ~papers_delivered(?r, ?w)]]) +
+    //        (-100 + sum_{?r: robot, ?wf: waypoint, ?wt: waypoint} [COST_MOVE(?r)*goto_waypoint(?r, ?wf, ?wt) * distance(?wf, ?wt)]);// +
+    //(100 * ((sum_{?r: robot} [docked(?r)]) * (sum_{?r: robot, ?w: waypoint} [papers_delivered(?r, ?w)] == sum_{?w: waypoint} [DELIVERY_DESTINATION(?w)])));
+
+
+    action-preconditions {
+
+
+        // A robot must be undocked, localised and in a position to move to another
+        forall_{?r: robot, ?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt) => (robot_at(?r, ?wf) ^ localised(?r) ^ undocked(?r))];
+        
+        // A robot can not move to its current position
+        forall_{?r: robot, ?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt) => (?wf ~= ?wt)];
+
+        // A robot can not be in two places at the same time
+        forall_{?r: robot, ?w1: waypoint, ?w2: waypoint} [?w1 == ?w2 | (robot_at(?r, ?w1) => ~robot_at(?r, ?w2))];
+
+        // Robot must be undocked to localise
+        forall_{?r: robot} [localise(?r) => undocked(?r)];
+
+        // Robot must be docked to undock and vice-versa -> note: as we're using ?w here, we must enforce the DOCK_AT to avoid instantiations of dock with wrong waypoints
+        forall_{?r: robot, ?w: waypoint} [dock(?r, ?w) => (undocked(?r) ^ DOCK_AT(?w) ^ robot_at(?r, ?w))];
+        forall_{?r: robot, ?w: waypoint} [undock(?r, ?w) => (docked(?r) ^ DOCK_AT(?w) ^ robot_at(?r, ?w))];
+
+        // There must be somebody to speak
+        forall_{?r: robot} [ask_load(?r) => (exists_{?w: waypoint} [~carrying_papers(?r) ^ robot_at(?r, ?w) ^ somebody_at(?w) ^ PRINTER_AT(?w)])];
+        forall_{?r: robot} [ask_unload(?r) => (~asked_unload(?r) ^ carrying_papers(?r) ^ exists_{?w: waypoint} [DELIVERY_DESTINATION(?w) ^ robot_at(?r, ?w)])];
+
+        // We need to ask before waiting
+        forall_{?r: robot} [wait_load(?r) => asked_load(?r)];
+        forall_{?r: robot} [wait_unload(?r) => asked_unload(?r)];
+
+        // Need to go to a printer to load
+        forall_{?r: robot} [wait_load(?r) => (exists_{?p: waypoint} [robot_at(?r, ?p) ^ PRINTER_AT(?p)])];
+
+        // Carrying papers need to unload/load
+        forall_{?r: robot} [wait_unload(?r) => carrying_papers(?r)];
+        forall_{?r: robot} [wait_load(?r) => ~carrying_papers(?r)];
+
+        // Need to unload in a DELIVERY_DESTINATION
+        forall_{?r: robot} [wait_unload(?r) => (exists_{?w:waypoint} [robot_at(?r, ?w) ^ DELIVERY_DESTINATION(?w)])];
+
+        // Max 1 action at a time
+        forall_{?r: robot} [
+            (localise(?r) + 
+            (sum_{?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt)]) +    
+            (sum_{?wa: waypoint} [dock(?r, ?wa)]) + 
+            (sum_{?wb: waypoint} [undock(?r, ?wb)]) +
+            ask_load(?r) + ask_unload(?r) + 
+            wait_load(?r) + wait_unload(?r) ) <= 1];
+
+    };
+
+    state-invariants {
+
+        // Robot can't be docked and undocked at the same time
+        forall_{?r: robot} [docked(?r) <=> ~undocked(?r)];
+
+    };
+}

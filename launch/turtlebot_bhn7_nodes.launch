@@ -9,9 +9,8 @@
 
 	<arg name="data_path"             default="$(find rosplan_demos)/common/" />
 
-
-
-
+	<node name="initial_setup" pkg="kcl_turtlebot" type="initial_setup.py" respawn="false" output="screen" />
+	<node name="turtlebot_sensing" pkg="kcl_turtlebot" type="turtlebot_sensing" respawn="false" output="screen" />
 
     <node name="rosplan_roadmap_server" pkg="rosplan_interface_mapping" type="rpsimplemapServer" respawn="false" output="screen">
     	<param name="waypoint_file"   value="$(arg waypoint_file)" />
