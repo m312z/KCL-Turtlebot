@@ -65,7 +65,7 @@ domain turtlebot_domain_printing {
         ask_load(robot): { action-fluent, bool, default = false };
         ask_unload(robot): { action-fluent, bool, default = false };
         wait_load(robot): { action-fluent, bool, default = false };
-        wait_unload(robot): { action-fluent, bool, default = false };
+        wait_unload(robot, waypoint): { action-fluent, bool, default = false };
     };
 
     cpfs {
@@ -82,16 +82,18 @@ domain turtlebot_domain_printing {
 
         // Printing
         carrying_papers'(?r) = if (wait_load(?r)) then true
-                               else if (wait_unload(?r)) then false
+                               else if (exists_{?w: waypoint} [wait_unload(?r, ?w)]) then false
                                else carrying_papers(?r);
 
         is_busy'(?p) = PRINTER_AT(?p) ^ Bernoulli(BUSY_RATE(?p));
         somebody_at'(?w) = true;//Bernoulli(OCCUPATION_RATE(?w));
         asked_load'(?r) = ask_load(?r) | asked_load(?r) ^ ~(exists_{?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt)]);
         asked_unload'(?r) = ask_unload(?r) | asked_unload(?r) ^ ~(exists_{?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt)]);
-        papers_delivered'(?r, ?w) = (robot_at(?r, ?w) ^ wait_unload(?r) ^ DELIVERY_DESTINATION(?w)) | papers_delivered(?r, ?w);
+        papers_delivered'(?r, ?w) = (robot_at(?r, ?w) ^ wait_unload(?r, ?w) ^ DELIVERY_DESTINATION(?w)) | papers_delivered(?r, ?w);
+        //papers_delivered'(?r, ?w) = if (wait_unload(?r, ?w)) then (robot_at(?r, ?w) ^ DELIVERY_DESTINATION(?w)) 
+        //                            else papers_delivered(?r, ?w);
         //in_process'(?r, ?w) = if (wait_load(?r)) then (DELIVERY_DESTINATION(?w) ^ ~exists_{?r1: robot} [?r ~= ?r1 ^ in_process(?r1, ?w)])
-        //                         else if (wait_unload(?r)) then false
+        //                         else if (wait_unload(?r, ?w)) then false
         //                         else in_process(?r, ?w);
 
         // Goal
@@ -100,7 +102,7 @@ domain turtlebot_domain_printing {
 
     reward = if (~goal ^ forall_{?w: waypoint} [~DELIVERY_DESTINATION(?w) | (DELIVERY_DESTINATION(?w) ^ exists_{?r: robot} [papers_delivered(?r, ?w)])]) then 100
              else if (goal ^ forall_{?r: robot} [docked(?r)]) then 1000
-             //else if (goal) then -55*(sum_{?r: robot} [(localise(?r) + (sum_{?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt)]) + (sum_{?wa: waypoint} [dock(?r, ?wa)]) + (sum_{?wb: waypoint} [undock(?r, ?wb)]) + ask_load(?r) + ask_unload(?r) + wait_load(?r) + wait_unload(?r))])
+             //else if (goal) then -55*(sum_{?r: robot} [(localise(?r) + (sum_{?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt)]) + (sum_{?wa: waypoint} [dock(?r, ?wa)]) + (sum_{?wb: waypoint} [undock(?r, ?wb)]) + ask_load(?r) + ask_unload(?r) + wait_load(?r) + wait_unload(?r, ?w))])
              else (-100 + sum_{?r: robot, ?wf: waypoint, ?wt: waypoint} [COST_MOVE(?r)*goto_waypoint(?r, ?wf, ?wt) * distance(?wf, ?wt)]);
 
     // Function like: reward new deliveries, penalize movements based on distance, reward docked when everything is delivered
@@ -110,8 +112,6 @@ domain turtlebot_domain_printing {
 
 
     action-preconditions {
-
-
         // A robot must be undocked, localised and in a position to move to another
         forall_{?r: robot, ?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt) => (robot_at(?r, ?wf) ^ localised(?r) ^ undocked(?r))];
         
@@ -134,17 +134,17 @@ domain turtlebot_domain_printing {
 
         // We need to ask before waiting
         forall_{?r: robot} [wait_load(?r) => asked_load(?r)];
-        forall_{?r: robot} [wait_unload(?r) => asked_unload(?r)];
+        forall_{?r: robot, ?w: waypoint} [wait_unload(?r, ?w) => asked_unload(?r)];
 
         // Need to go to a printer to load
         forall_{?r: robot} [wait_load(?r) => (exists_{?p: waypoint} [robot_at(?r, ?p) ^ PRINTER_AT(?p)])];
 
         // Carrying papers need to unload/load
-        forall_{?r: robot} [wait_unload(?r) => carrying_papers(?r)];
+        forall_{?r: robot, ?w:waypoint} [wait_unload(?r, ?w) => carrying_papers(?r)];
         forall_{?r: robot} [wait_load(?r) => ~carrying_papers(?r)];
 
         // Need to unload in a DELIVERY_DESTINATION
-        forall_{?r: robot} [wait_unload(?r) => (exists_{?w:waypoint} [robot_at(?r, ?w) ^ DELIVERY_DESTINATION(?w)])];
+        forall_{?r: robot, ?w: waypoint} [wait_unload(?r, ?w) => (robot_at(?r, ?w) ^ DELIVERY_DESTINATION(?w))];
 
         // Max 1 action at a time
         forall_{?r: robot} [
@@ -153,7 +153,7 @@ domain turtlebot_domain_printing {
             (sum_{?wa: waypoint} [dock(?r, ?wa)]) + 
             (sum_{?wb: waypoint} [undock(?r, ?wb)]) +
             ask_load(?r) + ask_unload(?r) + 
-            wait_load(?r) + wait_unload(?r) ) <= 1];
+            wait_load(?r) + (sum_{?w: waypoint} [wait_unload(?r,?w)]) ) <= 1];
 
     };
 
