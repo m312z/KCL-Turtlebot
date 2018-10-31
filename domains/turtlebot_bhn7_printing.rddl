@@ -21,6 +21,11 @@ non-fluents nf_turtlebot_bhn7 {
 		PRINTER_AT(printer-ent);
 		PRINTER_AT(printer-corridor);
 		PRINTER_AT(printer-phdarea);
+		
+		BUSY_RATE(printer-ent) = 0.95;
+		BUSY_RATE(printer-phdarea) = 0.5;
+		BUSY_RATE(printer-corridor) = 0.15;
+
 		DELIVERY_DESTINATION(dan-office);
 	};
 }

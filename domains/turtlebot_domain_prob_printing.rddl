@@ -90,8 +90,8 @@ domain turtlebot_domain_prob_printing {
         //people_at'(?p) = if (PRINTER_AT(?p)) then Poisson(AVG_PPL_PRINTER(?p))
         //                 else 0;
         somebody_at'(?w) = Bernoulli(OCCUPATION_RATE(?w));
-        asked_load'(?r) = ask_load(?r) | asked_load(?r) ^ ~(exists_{?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt)]);
-        asked_unload'(?r) = ask_unload(?r) | asked_unload(?r) ^ ~(exists_{?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt)]);
+        asked_load'(?r) = ask_load(?r) |if (exists_{?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt)]) then false else asked_load(?r);
+        asked_unload'(?r) = ask_unload(?r) | if (exists_{?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt)]) then false else asked_unload(?r);
         papers_delivered'(?r, ?w) = (robot_at(?r, ?w) ^ wait_unload(?r) ^ DELIVERY_DESTINATION(?w)) | papers_delivered(?r, ?w);
         //in_process'(?r, ?w) = if (wait_load(?r)) then (DELIVERY_DESTINATION(?w) ^ ~exists_{?r1: robot} [?r ~= ?r1 ^ in_process(?r1, ?w)])
         //                         else if (wait_unload(?r)) then false

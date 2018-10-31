@@ -9,6 +9,10 @@
 TurtleBotSensingInterface::TurtleBotSensingInterface(ros::NodeHandle &nh, std::string robot_name) : nh_(nh), message_store(nh) {
     dock_subs =  nh.subscribe("/mobile_base/sensors/dock_ir", 1, &TurtleBotSensingInterface::dock_cb, this);
     pose_subs =  nh.subscribe("/amcl_pose", 1, &TurtleBotSensingInterface::pose_cb, this);
+    localised_mock_subs =  nh.subscribe("/localised_mock", 1, &TurtleBotSensingInterface::localise_cb, this);
+    somebody_at_mock_subs =  nh.subscribe("/someodyat_mock", 1, &TurtleBotSensingInterface::somebodyat_cb, this);
+    is_printer_busy_mock_subs =  nh.subscribe("/isbusy_mock", 1, &TurtleBotSensingInterface::isbusy_cb, this);
+
     query_instances = nh.serviceClient<rosplan_knowledge_msgs::GetInstanceService>("/rosplan_knowledge_base/state/instances");
     update_knowledge = nh.serviceClient<rosplan_knowledge_msgs::KnowledgeUpdateServiceArray>("/rosplan_knowledge_base/update_array");
     docked = true;
@@ -56,9 +60,11 @@ void TurtleBotSensingInterface::pose_cb(geometry_msgs::PoseWithCovarianceStamped
         if (bak ^ robot_at[*wit]) changed_robotat = true;
     }
 
+    #ifdef AUTO_LOCALISED
     changed_localised = localised;
     localised = (msg->pose.covariance[0] < 0.009) && (msg->pose.covariance[1] < 0.009);
     changed_localised ^= localised;
+    #endif
 }
 
 void TurtleBotSensingInterface::updateKB() {
@@ -70,6 +76,7 @@ void TurtleBotSensingInterface::updateKB() {
 
     // docked
     if (changed_docked) {
+
         rosplan_knowledge_msgs::KnowledgeItem item;
         item.knowledge_type = item.FACT;
         item.is_negative = 0;
@@ -81,6 +88,7 @@ void TurtleBotSensingInterface::updateKB() {
         else updatePredSrv.request.update_type.push_back(rosplan_knowledge_msgs::KnowledgeUpdateServiceArray::Request::REMOVE_KNOWLEDGE);
     }
     if (changed_docked) {
+        changed_docked = false;
         rosplan_knowledge_msgs::KnowledgeItem item;
         item.knowledge_type = item.FACT;
         item.is_negative = docked;
@@ -94,6 +102,7 @@ void TurtleBotSensingInterface::updateKB() {
 
     // localised
     if (changed_localised) {
+        changed_localised = false;
         rosplan_knowledge_msgs::KnowledgeItem item;
         item.knowledge_type = item.FACT;
         item.is_negative = 0;
@@ -106,6 +115,7 @@ void TurtleBotSensingInterface::updateKB() {
     }
 
     if (changed_robotat) {
+        changed_robotat = false;
         // Robot at
         for (auto it = robot_at.begin(); it != robot_at.end(); ++it) {
             rosplan_knowledge_msgs::KnowledgeItem item;
@@ -129,11 +139,76 @@ void TurtleBotSensingInterface::updateKB() {
         }
     }
 
+    if (changed_somebodyat) {
+        changed_somebodyat = false;
+        for (auto it = somebodyat.begin(); it != somebodyat.end(); ++it) {
+            rosplan_knowledge_msgs::KnowledgeItem item;
+            item.knowledge_type = item.FACT;
+            item.is_negative = 0;
+            item.attribute_name = "somebody_at";
+
+            diagnostic_msgs::KeyValue wp;
+            wp.value = it->first;
+            wp.key = "w";
+            item.values.push_back(wp);
+
+            updatePredSrv.request.knowledge.push_back(item);
+            if (it->second)
+                updatePredSrv.request.update_type.push_back(
+                        rosplan_knowledge_msgs::KnowledgeUpdateServiceArray::Request::ADD_KNOWLEDGE);
+            else
+                updatePredSrv.request.update_type.push_back(
+                        rosplan_knowledge_msgs::KnowledgeUpdateServiceArray::Request::REMOVE_KNOWLEDGE);
+        }
+    }
+
+    if (changed_isbusy) {
+        changed_isbusy = false;
+        for (auto it = isbusy.begin(); it != isbusy.end(); ++it) {
+            rosplan_knowledge_msgs::KnowledgeItem item;
+            item.knowledge_type = item.FACT;
+            item.is_negative = 0;
+            item.attribute_name = "is_busy";
+
+            diagnostic_msgs::KeyValue wp;
+            wp.value = it->first;
+            wp.key = "w";
+            item.values.push_back(wp);
+
+            updatePredSrv.request.knowledge.push_back(item);
+            if (it->second)
+                updatePredSrv.request.update_type.push_back(
+                        rosplan_knowledge_msgs::KnowledgeUpdateServiceArray::Request::ADD_KNOWLEDGE);
+            else
+                updatePredSrv.request.update_type.push_back(
+                        rosplan_knowledge_msgs::KnowledgeUpdateServiceArray::Request::REMOVE_KNOWLEDGE);
+        }
+    }
+
     if (not update_knowledge.call(updatePredSrv))
         ROS_INFO("KCL: (TurtleBotSensing) failed to update PDDL model in knowledge base");
 
 }
 
+void TurtleBotSensingInterface::localise_cb(std_msgs::BoolConstPtr msg) {
+#ifndef AUTO_LOCALISED
+    changed_localised = localised; // copy value
+    localised = msg->data > 0;
+    changed_localised ^= localised; // XOR will be true only if both are different
+#endif
+}
+
+void TurtleBotSensingInterface::somebodyat_cb(diagnostic_msgs::KeyValueConstPtr msg) {
+    changed_somebodyat = somebodyat[msg->key]; // copy value
+    somebodyat[msg->key] = msg->value == "yes";
+    changed_somebodyat ^= somebodyat[msg->key]; // XOR will be true only if both are different
+}
+
+void TurtleBotSensingInterface::isbusy_cb(diagnostic_msgs::KeyValueConstPtr msg) {
+    changed_isbusy = isbusy[msg->key]; // copy value
+    isbusy[msg->key] = msg->value == "yes";
+    changed_isbusy ^= isbusy[msg->key]; // XOR will be true only if both are different
+}
 
 
 int main(int argc, char** argv) {
