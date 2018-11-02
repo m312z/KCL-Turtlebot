@@ -22,6 +22,7 @@
 	(asked_unload ?r - robot)
 	(papers_delivered ?r - robot ?w - waypoint)
 	(DELIVERY_DESTINATION ?w - waypoint)
+	(somebody_at ?w - waypoint)
 )
 
 ;; Move to any waypoint, avoiding terrain
@@ -74,15 +75,14 @@
 
 (:action wait_load
 	:parameters (?r - robot)
-	:precondition (and (asked_load ?r) (nocarrying_papers ?r) (exists (?p - waypoint) (and (printer_at ?p) (robot_at ?r ?p))))
+	:precondition (and (asked_load ?r) (nocarrying_papers ?r) (exists (?p - waypoint) (and (somebody_at ?p) (printer_at ?p) (robot_at ?r ?p))))
 	:effect (and (increase (total-cost) 0.25) 
 		(carrying_papers ?r) (not (nocarrying_papers ?r)))
 )
 
 (:action wait_unload
 	:parameters (?r - robot ?w - waypoint)
-	:precondition (and (asked_unload ?r) (carrying_papers ?r) (DELIVERY_DESTINATION ?w) (robot_at ?r ?w))
+	:precondition (and (somebody_at ?w) (asked_unload ?r) (carrying_papers ?r) (DELIVERY_DESTINATION ?w) (robot_at ?r ?w))
 	:effect (and (increase (total-cost) 0.25)
 		(nocarrying_papers ?r) (not (carrying_papers ?r)) (papers_delivered ?r ?w)))
 )
-

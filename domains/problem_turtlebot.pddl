@@ -13,6 +13,17 @@
     (printer_at printer-corridor)
     (printer_at printer-phdarea)
 
+    (somebody_at entrance)
+    (somebody_at dock-station)
+    (somebody_at meeting-room)
+    (somebody_at dan-office)
+    (somebody_at phdarea)
+    (somebody_at fridge)
+    (somebody_at coffee)
+    (somebody_at printer-ent)
+    (somebody_at printer-corridor)
+    (somebody_at printer-phdarea)
+
     (DELIVERY_DESTINATION dan-office)
     (= (distance dock-station printer-corridor) 1)
     (= (distance dock-station printer-ent) 1)

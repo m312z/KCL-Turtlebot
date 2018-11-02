@@ -157,7 +157,6 @@ domain turtlebot_domain_prob_printing {
             (sum_{?wb: waypoint} [undock(?r, ?wb)]) +
             ask_load(?r) + ask_unload(?r) + 
             wait_load(?r) + (sum_{?w: waypoint} [wait_unload(?r,?w)]) ) <= 1];
-
     };
 
     state-invariants {
