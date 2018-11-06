@@ -48,10 +48,10 @@
     	<param name="pddl_action_name"		value="goto_waypoint" />
 	</node>
 
-	<include file="$(find rosplan_planning_system)/launch/includes/simulated_action.launch" >
+	<!--<include file="$(find rosplan_planning_system)/launch/includes/simulated_action.launch" >
 		<arg name="pddl_action_name" value="wait_load" />
 		<arg name="action_duration" value="15" />
-	</include>
+	</include>-->
 
     <include file="$(find rosplan_planning_system)/launch/includes/simulated_action.launch" >
 		<arg name="pddl_action_name" value="wait_unload" />

@@ -10,7 +10,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 non-fluents nf_turtlebot_bhn7 {
-	domain = turtlebot_domain_printing;
+	domain = turtlebot_domain_prob_printing;
 	objects {
 		waypoint: {entrance, dock-station, meeting-room, dan-office, phdarea, fridge, coffee, printer-ent, printer-corridor, printer-phdarea}; 
         robot: {kenny};
@@ -23,15 +23,15 @@ non-fluents nf_turtlebot_bhn7 {
 		PRINTER_AT(printer-phdarea);
 		
 		BUSY_RATE(printer-ent) = 0.95;
-		BUSY_RATE(printer-phdarea) = 0.5;
-		BUSY_RATE(printer-corridor) = 0.15;
+		BUSY_RATE(printer-phdarea) = 0.05;
+		BUSY_RATE(printer-corridor) = 0.5;
 
 		DELIVERY_DESTINATION(dan-office);
 	};
 }
 
 instance turtlebot_bhn7_printing__1 {
-	domain = turtlebot_domain_printing;
+	domain = turtlebot_domain_prob_printing;
 	non-fluents = nf_turtlebot_bhn7;
 	init-state {
 		robot_at(kenny, dock-station);

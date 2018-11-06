@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="interactive"           default="false" />
+    <arg name="timeout"               default="55" />
+    <arg name="busy_timeout"          default="65" />
+    <arg name="node_name"             default="rosplan_wait_papers_interface"/>
+
+    <rosparam param="/$(arg node_name)/people_distribution">
+        entrance: 0.5
+        dock-station: 0.5
+        meeting-room: 0.5
+        dan-office: 0.5
+        phdarea: 0.5
+        fridge: 0.5
+        coffee: 0.5
+        printer-ent: 0.5
+        printer-corridor: 0.5
+        printer-phdarea: 0.5
+    </rosparam>
+    <rosparam param="/$(arg node_name)/busy_distribution">
+        printer-ent: 0.95
+        printer-corridor: 0.5
+        printer-phdarea: 0.05
+    </rosparam>
+
+    <node name="$(arg node_name)" pkg="rosplan_interface_turtlebot2" type="rpwait" respawn="false" output="screen">
+        <param name="interactive" value="$(arg interactive)" />
+        <param name="timeout" value="$(arg timeout)" />
+        <param name="busy_timeout" value="$(arg busy_timeout)" />
+        <!--<param name="people_distribution" value="$(arg people_distribution)" />
+        <param name="busy_distribution" value="$(arg busy_distribution)" />-->
+        <param name="knowledge_base"        value="rosplan_knowledge_base" />
+        <param name="pddl_action_name"      value="wait_load" />
+        <param name="action_dispatch_topic" value="/rosplan_plan_dispatcher/action_dispatch" />
+        <param name="action_feedback_topic" value="/rosplan_plan_dispatcher/action_feedback" />
+    </node>
+</launch>
