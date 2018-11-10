@@ -30,4 +30,4 @@ if __name__ == "__main__":
             rate.sleep()
         except:
             pass
-    print 'Total distance traveled is:', d.total_distance, 'metres'
+    print 'Total distance traveled is:', d.total_distance, 'meters'
