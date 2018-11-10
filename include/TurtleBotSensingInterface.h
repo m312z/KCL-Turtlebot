@@ -6,6 +6,7 @@
 #define KCL_TURTLEBOT_TURTLEBOTSENSINGINTERFACE_H
 #include "ros/ros.h"
 #include "kobuki_msgs/DockInfraRed.h"
+#include "kobuki_msgs/SensorState.h"
 #include "geometry_msgs/PoseWithCovarianceStamped.h"
 #include "geometry_msgs/PoseStamped.h"
 #include "rosplan_knowledge_msgs/GetInstanceService.h"
@@ -34,6 +35,7 @@ private:
 
 
     // Predicates
+public: // fixme
     bool docked, changed_docked;
     bool localised, changed_localised;
     std::map<std::string, bool> robot_at;
@@ -44,7 +46,8 @@ private:
     bool changed_isbusy;
 
     // Callbacks
-    void dock_cb(kobuki_msgs::DockInfraRedConstPtr msg);
+    //void dock_cb(kobuki_msgs::DockInfraRedConstPtr msg);
+    void dock_cb(kobuki_msgs::SensorStateConstPtr msg);
     void pose_cb(geometry_msgs::PoseWithCovarianceStampedConstPtr msg);
     void localise_cb(std_msgs::BoolConstPtr msg);
     void somebodyat_cb(diagnostic_msgs::KeyValueConstPtr msg);

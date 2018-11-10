@@ -7,10 +7,11 @@
 
 
 TurtleBotSensingInterface::TurtleBotSensingInterface(ros::NodeHandle &nh, std::string robot_name) : nh_(nh), message_store(nh) {
-    dock_subs =  nh.subscribe("/mobile_base/sensors/dock_ir", 1, &TurtleBotSensingInterface::dock_cb, this);
+    //dock_subs =  nh.subscribe("/mobile_base/sensors/dock_ir", 1, &TurtleBotSensingInterface::dock_cb, this);
+    dock_subs =  nh.subscribe("/mobile_base/sensors/core", 1, &TurtleBotSensingInterface::dock_cb, this);
     pose_subs =  nh.subscribe("/amcl_pose", 1, &TurtleBotSensingInterface::pose_cb, this);
     localised_mock_subs =  nh.subscribe("/localised_mock", 1, &TurtleBotSensingInterface::localise_cb, this);
-    somebody_at_mock_subs =  nh.subscribe("/someodyat_mock", 1, &TurtleBotSensingInterface::somebodyat_cb, this);
+    somebody_at_mock_subs =  nh.subscribe("/somebodyat_mock", 1, &TurtleBotSensingInterface::somebodyat_cb, this);
     is_printer_busy_mock_subs =  nh.subscribe("/isbusy_mock", 1, &TurtleBotSensingInterface::isbusy_cb, this);
 
     query_instances = nh.serviceClient<rosplan_knowledge_msgs::GetInstanceService>("/rosplan_knowledge_base/state/instances");
@@ -20,11 +21,12 @@ TurtleBotSensingInterface::TurtleBotSensingInterface(ros::NodeHandle &nh, std::s
     changed_docked = changed_localised = changed_robotat = false;
 }
 
-void TurtleBotSensingInterface::dock_cb(kobuki_msgs::DockInfraRedConstPtr msg) {
+void TurtleBotSensingInterface::dock_cb(kobuki_msgs::SensorStateConstPtr msg) {
     changed_docked = docked; // copy value
-    docked =  msg->data[0] == kobuki_msgs::DockInfraRed::NEAR_RIGHT;
+    /*docked =  msg->data[0] == kobuki_msgs::DockInfraRed::NEAR_RIGHT;
     docked &= msg->data[1] == kobuki_msgs::DockInfraRed::NEAR_CENTER;
-    docked &= msg->data[2] == kobuki_msgs::DockInfraRed::NEAR_LEFT;
+    docked &= msg->data[2] == kobuki_msgs::DockInfraRed::NEAR_LEFT;*/
+    docked = msg->charger != msg->DISCHARGING;
     changed_docked ^= docked; // XOR will be true only if both are different
 }
 
@@ -79,13 +81,15 @@ void TurtleBotSensingInterface::updateKB() {
 
         rosplan_knowledge_msgs::KnowledgeItem item;
         item.knowledge_type = item.FACT;
-        item.is_negative = 0;
+        item.is_negative = not docked;
         item.attribute_name = "docked";
         item.values.push_back(robot_param);
         updatePredSrv.request.knowledge.push_back(item);
-        if (docked)
-            updatePredSrv.request.update_type.push_back(rosplan_knowledge_msgs::KnowledgeUpdateServiceArray::Request::ADD_KNOWLEDGE);
-        else updatePredSrv.request.update_type.push_back(rosplan_knowledge_msgs::KnowledgeUpdateServiceArray::Request::REMOVE_KNOWLEDGE);
+        //if (docked)
+        updatePredSrv.request.update_type.push_back(rosplan_knowledge_msgs::KnowledgeUpdateServiceArray::Request::ADD_KNOWLEDGE);
+        item.is_negative = docked;
+	updatePredSrv.request.knowledge.push_back(item);
+	updatePredSrv.request.update_type.push_back(rosplan_knowledge_msgs::KnowledgeUpdateServiceArray::Request::REMOVE_KNOWLEDGE);
     }
     if (changed_docked) {
         changed_docked = false;
@@ -95,9 +99,11 @@ void TurtleBotSensingInterface::updateKB() {
         item.attribute_name = "undocked";
         item.values.push_back(robot_param);
         updatePredSrv.request.knowledge.push_back(item);
-        if (not docked)
-            updatePredSrv.request.update_type.push_back(rosplan_knowledge_msgs::KnowledgeUpdateServiceArray::Request::ADD_KNOWLEDGE);
-        else updatePredSrv.request.update_type.push_back(rosplan_knowledge_msgs::KnowledgeUpdateServiceArray::Request::REMOVE_KNOWLEDGE);
+        //if (not docked)
+        updatePredSrv.request.update_type.push_back(rosplan_knowledge_msgs::KnowledgeUpdateServiceArray::Request::ADD_KNOWLEDGE);
+	item.is_negative = not docked;
+        updatePredSrv.request.knowledge.push_back(item);
+	updatePredSrv.request.update_type.push_back(rosplan_knowledge_msgs::KnowledgeUpdateServiceArray::Request::REMOVE_KNOWLEDGE);
     }
 
     // localised
@@ -220,6 +226,10 @@ int main(int argc, char** argv) {
     ros::Rate loop_rate(10);
     while (ros::ok()) {
         ros::spinOnce();
+        std::cout << "Is the robot docked? (1/0): ";
+        bool dbkp = tbsi.docked;
+        std::cin >> tbsi.docked;
+        tbsi.changed_docked = tbsi.docked ^ dbkp;
         tbsi.updateKB();
         loop_rate.sleep();
     }
