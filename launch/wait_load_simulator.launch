@@ -13,14 +13,14 @@
         phdarea: 0.5
         fridge: 0.5
         coffee: 0.5
-        printer-ent: 0.5
-        printer-corridor: 0.5
+        printer-ent: 0.9
+        printer-corridor: 0.4
         printer-phdarea: 0.5
     </rosparam>
     <rosparam param="/$(arg node_name)/busy_distribution">
-        printer-ent: 0.95
-        printer-corridor: 0.5
-        printer-phdarea: 0.05
+        printer-ent: 0.5
+        printer-corridor: 0.2
+        printer-phdarea: 0.8
     </rosparam>
 
     <node name="$(arg node_name)" pkg="rosplan_interface_turtlebot2" type="rpwait" respawn="false" output="screen">

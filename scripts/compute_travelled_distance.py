@@ -11,7 +11,7 @@ class DistanceCompute:
         self.total_distance = 0
 
     def distance(self, a, b):  # a and b are Points
-        return sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2 + (a.z - b.z) ** 2)
+        return sqrt((a.x - b.x)**2 + (a.y - b.y)**2)
 
     def odom_cb(self, msg):
         if not self.started:

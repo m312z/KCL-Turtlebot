@@ -226,10 +226,10 @@ int main(int argc, char** argv) {
     ros::Rate loop_rate(10);
     while (ros::ok()) {
         ros::spinOnce();
-        std::cout << "Is the robot docked? (1/0): ";
+        /*std::cout << "Is the robot docked? (1/0): ";
         bool dbkp = tbsi.docked;
         std::cin >> tbsi.docked;
-        tbsi.changed_docked = tbsi.docked ^ dbkp;
+        tbsi.changed_docked = tbsi.docked ^ dbkp;*/
         tbsi.updateKB();
         loop_rate.sleep();
     }
