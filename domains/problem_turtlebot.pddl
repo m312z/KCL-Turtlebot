@@ -12,6 +12,7 @@
     (printer_at printer-ent)
     (printer_at printer-corridor)
     (printer_at printer-phdarea)
+    (localised kenny)    
 
     (somebody_at entrance)
     (somebody_at dock-station)

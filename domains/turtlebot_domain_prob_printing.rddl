@@ -23,13 +23,13 @@ domain turtlebot_domain_prob_printing {
         COST_MOVE(robot):  {non-fluent, real, default = -5};
         COST_DOCK:         {non-fluent, real, default = -15}; 
         VISIT_WP_REWARD:   {non-fluent, real, default = 7};
-        GOAL_REWARD:   {non-fluent, real, default = 50};
+        GOAL_REWARD:   {non-fluent, real, default = 5000};
 
         //////////////////////////////////////////////////////////////////////////////////////////
         // Non-fluents
         DOCK_AT(waypoint): { non-fluent, bool, default = false };
         PRINTER_AT(waypoint): { non-fluent, bool, default = false };
-        distance(waypoint, waypoint): { non-fluent, int, default=10 }; // Filled externally
+        distance(waypoint, waypoint): { non-fluent, real, default=10 }; // Filled externally
         OCCUPATION_RATE(waypoint): { non-fluent, real, default = 1 }; // % of chance for the waypoint having people busy (0-1)
         DELIVERY_DESTINATION(waypoint): { non-fluent, bool, default = false };
         BUSY_RATE(waypoint): { non-fluent, real, default = 0.5 }; // % of chance for the printer being busy (0-1)
@@ -91,11 +91,11 @@ domain turtlebot_domain_prob_printing {
         //people_at'(?p) = if (PRINTER_AT(?p)) then Poisson(AVG_PPL_PRINTER(?p))
         //                 else 0;
         somebody_at'(?w) = Bernoulli(OCCUPATION_RATE(?w));
-        asked_load'(?r) = if (ask_load(?r)) then true
-                          else if (exists_{?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt)]) then false 
+        asked_load'(?r) = if (exists_{?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt)]) then false
+                          else if (ask_load(?r)) then true
                           else asked_load(?r);
-        asked_unload'(?r) = if (ask_unload(?r)) then true
-                            else if (exists_{?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt)]) then false 
+        asked_unload'(?r) = if (exists_{?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt)]) then false 
+                            else if (ask_unload(?r)) then true
                             else asked_unload(?r);
         papers_delivered'(?r, ?w) = (robot_at(?r, ?w) ^ wait_unload(?r, ?w) ^ DELIVERY_DESTINATION(?w)) | papers_delivered(?r, ?w);
         //in_process'(?r, ?w) = if (wait_load(?r)) then (DELIVERY_DESTINATION(?w) ^ ~exists_{?r1: robot} [?r ~= ?r1 ^ in_process(?r1, ?w)])
@@ -155,7 +155,7 @@ domain turtlebot_domain_prob_printing {
         forall_{?r: robot, ?w: waypoint} [wait_unload(?r, ?w) => asked_unload(?r)];
 
         // Need to go to a printer to load
-        forall_{?r: robot} [wait_load(?r) => (exists_{?p: waypoint} [robot_at(?r, ?p) ^ PRINTER_AT(?p)])];
+        forall_{?r: robot} [wait_load(?r) => (exists_{?p: waypoint} [robot_at(?r, ?p) ^ PRINTER_AT(?p) ^ somebody_at(?p)])];
 
         // Carrying papers need to unload/load
         forall_{?r: robot, ?w:waypoint} [wait_unload(?r, ?w) => carrying_papers(?r)];
