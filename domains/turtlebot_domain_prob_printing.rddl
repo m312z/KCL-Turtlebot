@@ -20,10 +20,10 @@ domain turtlebot_domain_prob_printing {
     pvariables {
         //////////////////////////////////////////////////////////////////////////////////////////
         // Action costs and penalties
-        COST_MOVE(robot):  {non-fluent, real, default = -5};
-        COST_DOCK:         {non-fluent, real, default = -15}; 
-        VISIT_WP_REWARD:   {non-fluent, real, default = 7};
-        GOAL_REWARD:   {non-fluent, real, default = 5000};
+        COST_MOVE(robot):  {non-fluent, real, default = -1};
+        COST_DOCK:         {non-fluent, real, default = -150}; 
+        COST_REPEAT_VISIT: {non-fluent, real, default = -5};
+        GOAL_REWARD:       {non-fluent, real, default = 5000};
 
         //////////////////////////////////////////////////////////////////////////////////////////
         // Non-fluents
@@ -41,16 +41,16 @@ domain turtlebot_domain_prob_printing {
         undocked(robot): { state-fluent, bool, default = false };
         docked(robot): { state-fluent, bool, default = false };
         localised(robot): { state-fluent, bool, default = false };
+        visited(waypoint): { state-fluent, bool, default = false };
 
         // Printing
         carrying_papers(robot): { state-fluent, bool, default = false };
-        somebody_at(waypoint): { state-fluent, bool, default = true };
+        somebody_at(waypoint): { state-fluent, bool, default = false };
         is_busy(waypoint): { state-fluent, bool, default = false };
-        //people_at(waypoint): { state-fluent, int, default = false };
         asked_load(robot): { state-fluent, bool, default = false };
         asked_unload(robot): { state-fluent, bool, default = false };
         papers_delivered(robot, waypoint): { state-fluent, bool, default = false };
-        //in_process(robot, waypoint):  { state-fluent, bool, default = false };
+        got_papers_reward(robot): { state-fluent, bool, default = false}; // True when the reward for carrying the papers has been obtained
 
 
         // Goal?
@@ -71,7 +71,6 @@ domain turtlebot_domain_prob_printing {
     };
 
     cpfs {
-
         robot_at'(?r, ?w) = if (exists_{?w1: waypoint} (goto_waypoint(?r, ?w1, ?w))) then true 
                             else if (exists_{?w1: waypoint} (goto_waypoint(?r, ?w, ?w1))) then false
                             else robot_at(?r, ?w);
@@ -82,14 +81,15 @@ domain turtlebot_domain_prob_printing {
 
         localised'(?r) = localised(?r) | localise(?r);
 
+        visited'(?w) = visited(?w) | (exists_{?r:robot, ?w1: waypoint} [goto_waypoint(?r, ?w1, ?w)]);
+        
         // Printing
         carrying_papers'(?r) = if (wait_load(?r)) then true
                                else if (exists_{?w: waypoint} [wait_unload(?r, ?w)]) then false
                                else carrying_papers(?r);
 
         is_busy'(?p) = PRINTER_AT(?p) ^ Bernoulli(BUSY_RATE(?p));
-        //people_at'(?p) = if (PRINTER_AT(?p)) then Poisson(AVG_PPL_PRINTER(?p))
-        //                 else 0;
+
         somebody_at'(?w) = Bernoulli(OCCUPATION_RATE(?w));
         asked_load'(?r) = if (exists_{?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt)]) then false
                           else if (ask_load(?r)) then true
@@ -98,22 +98,22 @@ domain turtlebot_domain_prob_printing {
                             else if (ask_unload(?r)) then true
                             else asked_unload(?r);
         papers_delivered'(?r, ?w) = (robot_at(?r, ?w) ^ wait_unload(?r, ?w) ^ DELIVERY_DESTINATION(?w)) | papers_delivered(?r, ?w);
-        //in_process'(?r, ?w) = if (wait_load(?r)) then (DELIVERY_DESTINATION(?w) ^ ~exists_{?r1: robot} [?r ~= ?r1 ^ in_process(?r1, ?w)])
-        //                         else if (wait_unload(?r)) then false
-        //                         else in_process(?r, ?w);
 
         // Goal
-        goal' = (forall_{?w: waypoint} [~DELIVERY_DESTINATION(?w) | (DELIVERY_DESTINATION(?w) ^ exists_{?r: robot} [papers_delivered(?r, ?w)])])  | goal;
+        goal' = (forall_{?w: waypoint} [~DELIVERY_DESTINATION(?w) | (exists_{?r: robot} [papers_delivered(?r, ?w)])])  | goal;
+        got_papers_reward(?r) = got_papers_reward(?r) | carrying_papers(?r);
     };
 
-    reward = if (~goal ^ forall_{?w: waypoint} [~DELIVERY_DESTINATION(?w) | (DELIVERY_DESTINATION(?w) ^ exists_{?r: robot} [papers_delivered(?r, ?w)])]) then 100
-             else if (goal ^ forall_{?r: robot} [docked(?r)]) then 100
+    reward = if (~goal ^ forall_{?w: waypoint} [~DELIVERY_DESTINATION(?w) | (exists_{?r: robot} [papers_delivered(?r, ?w)])]) then GOAL_REWARD
+             else if (goal ^ forall_{?r: robot} [docked(?r)]) then GOAL_REWARD/2
+             else if ((sum_{?r: robot} [(localise(?r) + (sum_{?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt)]) + (sum_{?wa: waypoint} [dock(?r, ?wa)]) + (sum_{?wb: waypoint} [undock(?r, ?wb)]) + ask_load(?r) + ask_unload(?r) + wait_load(?r) + (sum_{?w: waypoint} [wait_unload(?r,?w)]))]) == 0) then -10000
+             else if (exists_{?r: robot} [~got_papers_reward(?r) ^ carrying_papers(?r)]) then GOAL_REWARD/5
+             //else if (exists_{?r: robot, ?w: waypoint} [robot_at(?r, ?w) ^ DELIVERY_DESTINATION(?w) ^ carrying_papers(?r)]) then 100
              // not needed else if (goal) then -55*(sum_{?r: robot} [(localise(?r) + (sum_{?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt)]) + (sum_{?wa: waypoint} [dock(?r, ?wa)]) + (sum_{?wb: waypoint} [undock(?r, ?wb)]) + ask_load(?r) + ask_unload(?r) + wait_load(?r) + wait_unload(?r))])
-             else if (exists_{?p: waypoint, ?r: robot} [PRINTER_AT(?p) ^ is_busy(?p) ^ robot_at(?r, ?p) ^ wait_load(?r)]) then -500
+             //else if (exists_{?p: waypoint, ?r: robot} [PRINTER_AT(?p) ^ is_busy(?p) ^ robot_at(?r, ?p) ^ wait_load(?r)]) then -500
              // If no action, extra penalty! (To avoid noops...)
-             else if ((sum_{?r: robot} [(localise(?r) + (sum_{?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt)]) + (sum_{?wa: waypoint} [dock(?r, ?wa)]) + (sum_{?wb: waypoint} [undock(?r, ?wb)]) + ask_load(?r) + ask_unload(?r) + wait_load(?r) + (sum_{?w: waypoint} [wait_unload(?r,?w)]))]) == 0) then -1000
-             else (-100 + (sum_{?r: robot, ?w: waypoint} [COST_DOCK * dock(?r, ?w)]) + (sum_{?r: robot, ?wf: waypoint, ?wt: waypoint} [COST_MOVE(?r)*goto_waypoint(?r, ?wf, ?wt) * distance(?wf, ?wt)]));
-             //else (-100 + (sum_{?r: robot, ?wf: waypoint, ?wt: waypoint} [COST_MOVE(?r)*goto_waypoint(?r, ?wf, ?wt) * distance(?wf, ?wt)]));
+             else (-100 + (sum_{?r: robot, ?w: waypoint} [COST_DOCK * dock(?r, ?w)]) + (sum_{?r: robot, ?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt) * ((COST_MOVE(?r) * (distance(?wf, ?wt)/20)) + (COST_REPEAT_VISIT * visited(?wt)))]));
+             //else -100;
 
     // Old version
     //reward = if (~goal ^ forall_{?w: waypoint} [~DELIVERY_DESTINATION(?w) | (DELIVERY_DESTINATION(?w) ^ exists_{?r: robot} [papers_delivered(?r, ?w)])]) then 100
@@ -121,7 +121,7 @@ domain turtlebot_domain_prob_printing {
     //         // not needed else if (goal) then -55*(sum_{?r: robot} [(localise(?r) + (sum_{?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt)]) + (sum_{?wa: waypoint} [dock(?r, ?wa)]) + (sum_{?wb: waypoint} [undock(?r, ?wb)]) + ask_load(?r) + ask_unload(?r) + wait_load(?r) + wait_unload(?r))])
     //         else if (exists_{?p: waypoint, ?r: robot} [PRINTER_AT(?p) ^ is_busy(?p) ^ robot_at(?r, ?p) ^ wait_load(?r)]) then -500
     //         //else if (exists_{?p: waypoint, ?r: robot} [PRINTER_AT(?p) ^ robot_at(?r, ?p) ^ wait_load(?r)]) then -100*people_at(?p)
-    //         else (-100 + (sum_{?r: robot, ?wf: waypoint, ?wt: waypoint} [COST_MOVE(?r)*goto_waypoint(?r, ?wf, ?wt) * distance(?wf, ?wt)]));
+    //         else (-100 + (sum_{?r: robot, ?wf: waypoint, ?wt: waypoint} [COST_MOVE(?r)*goto_waypoint(?r, ?wf, ?wt) * (distance(?wf, ?wt)/20)]));
 
     // Function like: reward new deliveries, penalize movements based on distance, reward docked when everything is delivered
     //reward = (100 * exists_{?w: waypoint} [DELIVERY_DESTINATION(?w) ^ exists_{?r: robot} [robot_at(?r, ?w) ^ wait_unload(?r) ^ ~papers_delivered(?r, ?w)]]) +
@@ -147,7 +147,7 @@ domain turtlebot_domain_prob_printing {
         forall_{?r: robot, ?w: waypoint} [undock(?r, ?w) => (docked(?r) ^ DOCK_AT(?w) ^ robot_at(?r, ?w))];
 
         // There must be somebody to speak
-        forall_{?r: robot} [ask_load(?r) => (exists_{?w: waypoint} [~carrying_papers(?r) ^ robot_at(?r, ?w) ^ somebody_at(?w) ^ PRINTER_AT(?w)])];
+        forall_{?r: robot} [ask_load(?r) => (~asked_load(?r) ^ ~carrying_papers(?r) ^ exists_{?w: waypoint} [robot_at(?r, ?w) ^ PRINTER_AT(?w)])];
         forall_{?r: robot} [ask_unload(?r) => (~asked_unload(?r) ^ carrying_papers(?r) ^ exists_{?w: waypoint} [DELIVERY_DESTINATION(?w) ^ robot_at(?r, ?w)])];
 
         // We need to ask before waiting

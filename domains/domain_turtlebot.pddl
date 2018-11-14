@@ -62,7 +62,7 @@
 
 (:action ask_load
 	:parameters (?r - robot)
-	:precondition (exists (?p - waypoint) (and (printer_at ?p) (nocarrying_papers ?r) (somebody_at ?p) (robot_at ?r ?p)))
+	:precondition (exists (?p - waypoint) (and (printer_at ?p) (nocarrying_papers ?r) (robot_at ?r ?p)))
 	:effect (and (increase (total-cost) 0.5)
 		(asked_load ?r))
 )
@@ -82,7 +82,7 @@
 
 (:action wait_unload
 	:parameters (?r - robot ?w - waypoint)
-	:precondition (and (somebody_at ?w) (asked_unload ?r) (carrying_papers ?r) (DELIVERY_DESTINATION ?w) (robot_at ?r ?w))
+	:precondition (and (asked_unload ?r) (carrying_papers ?r) (DELIVERY_DESTINATION ?w) (robot_at ?r ?w))
 	:effect (and (increase (total-cost) 0.25)
 		(nocarrying_papers ?r) (not (carrying_papers ?r)) (papers_delivered ?r ?w)))
 )
