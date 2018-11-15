@@ -106,11 +106,11 @@ domain turtlebot_domain_prob_printing {
 
     reward = if (~goal ^ forall_{?w: waypoint} [~DELIVERY_DESTINATION(?w) | (exists_{?r: robot} [papers_delivered(?r, ?w)])]) then GOAL_REWARD
              else if (goal ^ forall_{?r: robot} [docked(?r)]) then GOAL_REWARD/2
-             else if ((sum_{?r: robot} [(localise(?r) + (sum_{?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt)]) + (sum_{?wa: waypoint} [dock(?r, ?wa)]) + (sum_{?wb: waypoint} [undock(?r, ?wb)]) + ask_load(?r) + ask_unload(?r) + wait_load(?r) + (sum_{?w: waypoint} [wait_unload(?r,?w)]))]) == 0) then -10000
+             else if ((sum_{?r: robot} [(localise(?r) + (sum_{?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt)]) + (sum_{?wa: waypoint} [dock(?r, ?wa)]) + (sum_{?wb: waypoint} [undock(?r, ?wb)]) + ask_load(?r) + ask_unload(?r) + wait_load(?r) + (sum_{?w: waypoint} [wait_unload(?r,?w)]))]) == 0) then (-2 * GOAL_REWARD)
              else if (exists_{?r: robot} [~got_papers_reward(?r) ^ carrying_papers(?r)]) then GOAL_REWARD/5
              //else if (exists_{?r: robot, ?w: waypoint} [robot_at(?r, ?w) ^ DELIVERY_DESTINATION(?w) ^ carrying_papers(?r)]) then 100
              // not needed else if (goal) then -55*(sum_{?r: robot} [(localise(?r) + (sum_{?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt)]) + (sum_{?wa: waypoint} [dock(?r, ?wa)]) + (sum_{?wb: waypoint} [undock(?r, ?wb)]) + ask_load(?r) + ask_unload(?r) + wait_load(?r) + wait_unload(?r))])
-             //else if (exists_{?p: waypoint, ?r: robot} [PRINTER_AT(?p) ^ is_busy(?p) ^ robot_at(?r, ?p) ^ wait_load(?r)]) then -500
+             else if (exists_{?p: waypoint, ?r: robot} [PRINTER_AT(?p) ^ is_busy(?p) ^ robot_at(?r, ?p) ^ wait_load(?r)]) then -500
              // If no action, extra penalty! (To avoid noops...)
              else (-100 + (sum_{?r: robot, ?w: waypoint} [COST_DOCK * dock(?r, ?w)]) + (sum_{?r: robot, ?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt) * ((COST_MOVE(?r) * (distance(?wf, ?wt)/20)) + (COST_REPEAT_VISIT * visited(?wt)))]));
              //else -100;
