@@ -13,6 +13,7 @@
 	(docked ?v - robot)
 	(localised ?v - robot)
 	(dock_at ?wp - waypoint)
+	(visited ?w - waypoint)
 
 	;; Printing
 	(printer_at ?wp - waypoint)
@@ -23,6 +24,7 @@
 	(papers_delivered ?r - robot ?w - waypoint)
 	(DELIVERY_DESTINATION ?w - waypoint)
 	(somebody_at ?w - waypoint)
+	(is_busy ?w - waypoint)
 )
 
 ;; Move to any waypoint, avoiding terrain
@@ -30,7 +32,8 @@
 	:parameters (?v - robot ?from ?to - waypoint)
 	:precondition (and (robot_at ?v ?from) (localised ?v) (undocked ?v))
 	:effect (and (increase (total-cost) (distance ?from ?to))
-				(robot_at ?v ?to) (not (robot_at ?v ?from)) (not (asked_load ?v)) (not (asked_unload ?v)))
+				 (when (visited ?to) (increase (total-cost) 10))
+				(robot_at ?v ?to) (not (robot_at ?v ?from)) (not (asked_load ?v)) (not (asked_unload ?v)) (visited ?to))
 )
 
 ;; Localise
@@ -74,9 +77,11 @@
 )
 
 (:action wait_load
-	:parameters (?r - robot)
-	:precondition (and (asked_load ?r) (nocarrying_papers ?r) (exists (?p - waypoint) (and (somebody_at ?p) (printer_at ?p) (robot_at ?r ?p))))
+	:parameters (?r - robot ?p - waypoint)
+	:precondition (and (asked_load ?r) (nocarrying_papers ?r) (printer_at ?p) (robot_at ?r ?p) (somebody_at ?p))
 	:effect (and (increase (total-cost) 0.25) 
+		(when (is_busy ?p) (increase (total-cost) 50))
+		;(when (not (somebody_at ?p)) (increase (total-cost) 60))
 		(carrying_papers ?r) (not (nocarrying_papers ?r)))
 )
 
