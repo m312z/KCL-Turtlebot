@@ -29,8 +29,8 @@ non-fluents nf_turtlebot_bhn7 {
 		OCCUPATION_RATE(printer-phdarea) = 0.5;
 		OCCUPATION_RATE(printer-corridor) = 0.94;
 
-		DELIVERY_DESTINATION(dan-office);
-		//DELIVERY_DESTINATION(phdarea);
+		//DELIVERY_DESTINATION(dan-office);
+		DELIVERY_DESTINATION(phdarea);
 		//DELIVERY_DESTINATION(coffee);
 	};
 }
@@ -39,11 +39,12 @@ instance turtlebot_bhn7_printing__1 {
 	domain = turtlebot_domain_prob_printing;
 	non-fluents = nf_turtlebot_bhn7;
 	init-state {
-		robot_at(kenny, dock-station);
-		//robot_at(kenny, dan-office);
+		//robot_at(kenny, dock-station);
+		robot_at(kenny, dan-office);
 		//robot_at(kenny, phdarea);
-		docked(kenny);
-		//undocked(kenny);
+		//robot_at(kenny, printer-phdarea);
+		//docked(kenny);
+		undocked(kenny);
 		localised(kenny);
 		//somebody_at(printer-phdarea);
 	};

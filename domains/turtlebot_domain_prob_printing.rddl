@@ -120,7 +120,7 @@ domain turtlebot_domain_prob_printing {
                    + (sum_{?r: robot, ?w: waypoint} [COST_DOCK * dock(?r, ?w)])
                    + (sum_{?r: robot, ?wf: waypoint, ?wt: waypoint} [goto_waypoint(?r, ?wf, ?wt) * ((COST_MOVE(?r) * (distance(?wf, ?wt)/20)) + (COST_REPEAT_VISIT * visited(?wt)))])
                    + ((exists_{?p: waypoint, ?r: robot} [PRINTER_AT(?p) ^ ~somebody_at(?p) ^ robot_at(?r, ?p) ^ wait_load(?r)]) * -40)
-                   + ((exists_{?p: waypoint, ?r: robot} [PRINTER_AT(?p) ^ is_busy(?p) ^ robot_at(?r, ?p) ^ wait_load(?r)]) * -30)
+                   + ((exists_{?p: waypoint, ?r: robot} [PRINTER_AT(?p) ^ is_busy(?p) ^ robot_at(?r, ?p) ^ wait_load(?r)]) * -230)
                   );
 
     // Old version

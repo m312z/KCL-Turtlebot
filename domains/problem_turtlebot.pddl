@@ -5,11 +5,12 @@
     kenny - robot
 )
 (:init
-    (robot_at kenny dock-station)
-    ;(robot_at kenny dan-office)
+    ;(robot_at kenny dock-station)
+    (robot_at kenny dan-office)
     ;(robot_at kenny phdarea)
-    ;(undocked kenny)
-    (docked kenny)
+    ;(robot_at kenny printer-phdarea)
+    (undocked kenny)
+    ;(docked kenny)
     (dock_at dock-station)
     (nocarrying_papers kenny)
     (printer_at printer-ent)
@@ -29,8 +30,8 @@
     (somebody_at printer-phdarea)
     ;(is_busy printer-corridor)
 
-    (DELIVERY_DESTINATION dan-office)
-    ;(DELIVERY_DESTINATION phdarea)
+    ;(DELIVERY_DESTINATION dan-office)
+    (DELIVERY_DESTINATION phdarea)
     ;(DELIVERY_DESTINATION coffee)
     ;(= (distance dock-station printer-corridor) 1)
     ;(= (distance dock-station printer-ent) 1)
@@ -40,8 +41,8 @@
     (= (total-cost) 0)
 )
 (:goal (and
-    (papers_delivered kenny dan-office)
-    ;(papers_delivered kenny phdarea)
+    ;(papers_delivered kenny dan-office)
+    (papers_delivered kenny phdarea)
     ;(papers_delivered kenny coffee)
     ;(forall (?w - waypoint) (a))
     (docked kenny)
