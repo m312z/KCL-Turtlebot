@@ -104,7 +104,7 @@ domain turtlebot_domain_prob_printing {
 
         // Goal
         goal' = (forall_{?w: waypoint} [~DELIVERY_DESTINATION(?w) | (exists_{?r: robot} [papers_delivered(?r, ?w)])])  | goal;
-        got_papers_reward(?r) = got_papers_reward(?r) | carrying_papers(?r);
+        got_papers_reward'(?r) = got_papers_reward(?r) | carrying_papers(?r);
     };
 
     reward = if (~goal ^ forall_{?w: waypoint} [~DELIVERY_DESTINATION(?w) | (exists_{?r: robot} [papers_delivered(?r, ?w)])]) then GOAL_REWARD
